@@ -17,7 +17,7 @@ class AdminController extends Controller
     {
         $this->authorize('viewRequest', Booking::class);
 
-        $requests = Booking::where('status', 'pending')->paginate(10);
+        $requests = Booking::where('status', 'pending')->paginate(5);
 
         return view('admin.home')->withRequests($requests);
     }

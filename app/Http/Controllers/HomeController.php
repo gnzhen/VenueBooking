@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\User;
 use App\Booking;
 use Bouncer;
+use App\Venue;
 
 class HomeController extends Controller
 {
@@ -33,7 +34,7 @@ class HomeController extends Controller
         else{
             $this->authorize('viewBooking', Booking::class);
 
-            $requests = Booking::where('user_id', Auth::user()->id)->paginate(10);
+            $requests = Booking::where('user_id', Auth::user()->id)->paginate(5);
             
             return view('/home')->withRequests($requests);
         }

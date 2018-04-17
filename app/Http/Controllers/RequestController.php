@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use App\Booking;
 use Bouncer;
@@ -42,15 +43,43 @@ class RequestController extends Controller
     {
         $this->authorize('requestBooking', Booking::class);
         
-        $validator = $request->validate([
-            'book_from' => 'required|date_format:d/m/y h:i A',
-            'book_to' =>'required|date_format:d/m/y h:i A',
+        $validator = Validator::make($request->all(), [
+            'book_from' => 'required',
+            'book_to' =>'required',
             'venue_id' => 'required',
             'reason' => 'required'
         ]);
 
+        if ($validator->fails()) {
+
+            return back()->withErrors($validator)->withInput();
+        }
+
         $bookFrom = Carbon::createFromFormat('d/m/y h:i A', $request->book_from);
         $bookTo = Carbon::createFromFormat('d/m/y h:i A', $request->book_to);
+
+        $crashRequests = Booking::where(function ($query) use ($bookFrom, $bookTo){
+                                $query->where('book_from', '>=', $bookFrom)
+                                      ->where('book_from', '<', $bookTo);
+                            })
+                            ->orWhere(function ($query) use ($bookFrom, $bookTo) {
+                                $query->where('book_to', '>', $bookFrom)
+                                      ->where('book_to', '<=', $bookTo);
+                            })
+                            ->orWhere(function ($query) use ($bookFrom, $bookTo) {
+                                $query->where('book_from', '<=', $bookFrom)
+                                      ->where('book_to', '=>', $bookTo);
+                            })
+                            ->get();
+        
+        $crashRequests = $crashRequests->where('venue_id', $request->venue_id);
+
+        if(count($crashRequests) > 0){
+
+            $validator->errors()->add('venue_id', 'Venue not available!');
+
+            return back()->withErrors($validator)->withInput();
+        }
 
         $booking = new Booking;
         $booking->book_from = $bookFrom;
@@ -62,6 +91,31 @@ class RequestController extends Controller
         $booking->save();
 
         return redirect('home');
+    }
+
+    public function searchVenue(Request $request){
+
+        $this->authorize('requestBooking', Booking::class);
+
+        $validator = $request->validate([
+            'book_from' => 'required',
+            'book_to' =>'required',
+        ]);
+
+        $bookFrom = Carbon::createFromFormat('d/m/y h:i A', $request->book_from);
+        $bookTo = Carbon::createFromFormat('d/m/y h:i A', $request->book_to);
+
+        $crashRequests = Request::where('book_from', '>=', $request->book_from)
+                            ->where('book_from', '<', $request->book_to)
+                            ->orWhere(function ($query) {
+                                $query->where('book_to', '>', $request->book_from)
+                                      ->where('book_to', '<=', $request->book_to);
+                            })
+                            ->get();
+
+        foreach($crashRequest as $crashRequest){
+
+        }
     }
 
     /**
